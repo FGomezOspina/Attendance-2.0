@@ -215,6 +215,10 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
     formData.append('attendanceFile', fileInput.files[0]);
     formData.append('attendance_date', dateInput.value);
 
+    // Mostrar el indicador de carga
+    const loadingIndicator = document.getElementById('loading-indicator');
+    loadingIndicator.classList.remove('hidden');
+
     try {
         const response = await fetch(`${apiBaseUrl}/upload`, {
             method: 'POST',
@@ -236,6 +240,9 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
         console.error(error);
         messageDiv.textContent = 'Error al conectar con el servidor.';
         messageDiv.style.color = 'red';
+    } finally {
+        // Ocultar el indicador de carga
+        loadingIndicator.classList.add('hidden');
     }
 });
 
@@ -257,14 +264,14 @@ async function loadAttendanceFiles() {
                 <td data-label="Nombre Archivo">${file.file_name}</td>
                 <td data-label="Fecha Asistencia">${file.attendance_date}</td>
                 <td data-label="Fecha de Subida">${new Date(file.upload_date).toLocaleString()}</td>
-                <td data-label="Acciones"><button class="export-btn" data-file-id="${file.file_id}">Ver Detalles</button></td>
+                <td data-label="Acciones"><button class="export-btn view-details-btn" data-file-id="${file.file_id}">Ver Detalles</button></td>
             `;
 
             tableBody.appendChild(tr);
         });
 
         // Agregar event listeners a los botones de ver detalles
-        document.querySelectorAll('.export-btn').forEach(button => {
+        document.querySelectorAll('.view-details-btn').forEach(button => {
             button.addEventListener('click', () => {
                 const fileId = button.getAttribute('data-file-id');
                 loadMatchedResults(fileId);
@@ -280,11 +287,13 @@ async function loadAttendanceFiles() {
 
 /**
  * Cargar y mostrar los resultados emparejados de un archivo de asistencia específico.
- * @param {number} fileId - El ID del archivo de asistencia.
+ * @param {string} fileId - El ID del archivo de asistencia.
  */
 async function loadMatchedResults(fileId) {
     const container = document.getElementById('matched-results-container');
-    container.innerHTML = '<p>Cargando resultados...</p>';
+    const loadingIndicator = document.getElementById('loading-indicator');
+    container.innerHTML = ''; // Limpiar el contenedor
+    loadingIndicator.classList.remove('hidden'); // Mostrar el indicador de carga
 
     try {
         const response = await fetch(`${apiBaseUrl}/matched-results/${fileId}`);
@@ -313,14 +322,32 @@ async function loadMatchedResults(fileId) {
                     <tbody>
         `;
 
+        // Función para formatear fecha y hora
+        function formatDateTime(dateTimeString) {
+            const options = {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+                timeZone: 'America/Bogota' // Ajusta según tu zona horaria
+            };
+            const date = new Date(dateTimeString);
+            return date.toLocaleString('es-ES', options);
+        }
+
         results.forEach(row => {
+            const formattedCheckIn = formatDateTime(row.check_in);
+            const formattedCheckOut = row.check_out ? formatDateTime(row.check_out) : 'N/A';
+
             tableHtml += `
                 <tr>
                     <td data-label="ID">${row.id_number}</td>
                     <td data-label="Nombre">${row.name}</td>
                     <td data-label="Área">${row.area}</td>
-                    <td data-label="Check In">${row.check_in}</td>
-                    <td data-label="Check Out">${row.check_out || 'N/A'}</td>
+                    <td data-label="Check In">${formattedCheckIn}</td>
+                    <td data-label="Check Out">${formattedCheckOut}</td>
                     <td data-label="Estado">${row.status}</td>
                     <td data-label="Horas Trabajadas">${row.hours_worked}</td>
                 </tr>
@@ -334,21 +361,27 @@ async function loadMatchedResults(fileId) {
         `;
 
         // Agregar botón para descargar resultados en Excel
-        tableHtml += `<button class="export-btn" onclick="exportToExcel(${fileId})">Descargar Resultados en Excel</button>`;
+        tableHtml += `<button class="export-btn" id="export-btn-${fileId}">Descargar Resultados en Excel</button>`;
 
         container.innerHTML = tableHtml;
+
+        // Asignar el event listener al botón de exportar
+        document.getElementById(`export-btn-${fileId}`).addEventListener('click', () => exportToExcel(fileId));
 
         // Resetear cualquier búsqueda previa
         document.getElementById('search-results-input').value = '';
     } catch (error) {
         console.error('Error al cargar los resultados emparejados:', error);
         container.innerHTML = '<p>Error al cargar los resultados emparejados.</p>';
+    } finally {
+        // Ocultar el indicador de carga
+        loadingIndicator.classList.add('hidden');
     }
 }
 
 /**
  * Exportar los resultados emparejados de un archivo específico a Excel.
- * @param {number} fileId - El ID del archivo de asistencia.
+ * @param {string} fileId - El ID del archivo de asistencia.
  */
 async function exportToExcel(fileId) {
     try {
@@ -442,14 +475,12 @@ document.getElementById('export-all-btn').addEventListener('click', async () => 
 
         // Crear una hoja de trabajo con los datos
         const wsData = [
-            ['ID Archivo', 'Nombre Archivo', 'Fecha Asistencia', 'ID', 'Nombre', 'Área', 'Check In', 'Check Out', 'Estado', 'Horas Trabajadas']
+            ['ID Archivo', 'ID', 'Nombre', 'Área', 'Check In', 'Check Out', 'Estado', 'Horas Trabajadas']
         ];
 
         results.forEach(row => {
             wsData.push([
                 row.file_id,
-                row.file_name,
-                row.attendance_date,
                 row.id_number,
                 row.name,
                 row.area,
@@ -464,9 +495,7 @@ document.getElementById('export-all-btn').addEventListener('click', async () => 
 
         // Ajustar el ancho de las columnas
         ws['!cols'] = [
-            { wch: 12 }, // ID Archivo
-            { wch: 30 }, // Nombre Archivo
-            { wch: 15 }, // Fecha Asistencia
+            { wch: 20 }, // ID Archivo
             { wch: 15 }, // ID
             { wch: 30 }, // Nombre
             { wch: 20 }, // Área
@@ -489,7 +518,7 @@ document.getElementById('export-all-btn').addEventListener('click', async () => 
         });
 
         // Agregar filtros a la primera fila
-        ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { c: 0, r: 0 }, e: { c: 9, r: 0 } }) };
+        ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { c: 0, r: 0 }, e: { c: 7, r: 0 } }) };
 
         // Congelar la primera fila
         ws['!freeze'] = { xSplit: 0, ySplit: 1 };
