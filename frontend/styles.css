@@ -211,6 +211,23 @@ button.export-btn:hover, #export-all-btn:hover {
     display: none;
 }
 
+/* Estilos para el indicador de carga */
+.loading-indicator {
+    border: 8px solid #f3f3f3; /* Gris claro */
+    border-top: 8px solid #007bff; /* Azul */
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto; /* Centrar el spinner */
+}
+
+/* Animación de rotación */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 /* Media Queries para Responsividad */
 
 /* Estilos para pantallas pequeñas (hasta 768px) */

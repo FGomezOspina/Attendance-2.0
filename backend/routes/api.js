@@ -4,38 +4,50 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { admin, db, bucket } = require('../firebase'); // Asegúrate de ajustar la ruta si es necesario
 
-// Configurar almacenamiento con multer
-const uploadDir = path.join(__dirname, '../uploads');
+// Configurar almacenamiento temporal con multer
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/');
+    },
+    filename: function (req, file, cb) {
+        cb(null, file.originalname);
+    }
+});
 
-// Verificar si el directorio 'uploads' existe, si no, crearlo
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-    console.log(`Directorio creado: ${uploadDir}`);
-}
+const fileFilter = (req, file, cb) => {
+    const allowedExtensions = ['.txt', '.dat'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedExtensions.includes(ext)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Tipo de archivo no permitido'), false);
+    }
+};
 
-const upload = multer({ dest: uploadDir });
+const upload = multer({ storage: storage, fileFilter: fileFilter });
 
 // Horarios esperados para cada área, diferenciando entre días laborables y sábados
 const expectedSchedules = {
-    "ASEO": { 
-        "weekday": { "check_in": "06:15", "check_out": "15:00" }, 
+    "ASEO": {
+        "weekday": { "check_in": "06:15", "check_out": "15:00" },
         "saturday": { "check_in": "06:15", "check_out": "15:00" } // Mismo horario
     },
-    "MANTENIMIENTO": { 
-        "weekday": { "check_in": "07:15", "check_out": "17:00" }, 
+    "MANTENIMIENTO": {
+        "weekday": { "check_in": "07:15", "check_out": "17:00" },
         "saturday": { "check_in": "08:00", "check_out": "12:00" } // Horario reducido
     },
-    "ADMINISTRACION": { 
-        "weekday": { "check_in": "07:45", "check_out": "17:00" }, 
+    "ADMINISTRACION": {
+        "weekday": { "check_in": "07:45", "check_out": "17:00" },
         "saturday": { "check_in": "08:00", "check_out": "12:00" } // Horario reducido
     },
-    "POSCOSECHA": { 
-        "weekday": { "check_in": "06:40", "check_out": "15:30" }, 
+    "POSCOSECHA": {
+        "weekday": { "check_in": "06:40", "check_out": "15:30" },
         "saturday": { "check_in": "06:40", "check_out": "15:30" } // Mismo horario
     },
-    "OPERACIONES": { 
-        "weekday": { "check_in": "07:00", "check_out": "16:00" }, 
+    "OPERACIONES": {
+        "weekday": { "check_in": "07:00", "check_out": "16:00" },
         "saturday": { "check_in": "07:00", "check_out": "16:00" } // Mismo horario
     },
     // Puedes agregar más áreas y horarios según sea necesario
@@ -46,216 +58,169 @@ const normalizeString = (str) => {
     return str ? str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase() : '';
 };
 
-// Función para obtener una propiedad de un objeto sin distinguir mayúsculas y minúsculas
-const getPropertyCaseInsensitive = (obj, prop) => {
-    if (!obj) return undefined;
-    const propLower = prop.toLowerCase();
-    const key = Object.keys(obj).find(k => k.toLowerCase() === propLower);
-    return key ? obj[key] : undefined;
+// Función para normalizar IDs (eliminar caracteres no numéricos y espacios)
+const normalizeId = (id) => {
+    return id.replace(/\D/g, '').trim();
 };
 
 // Función para procesar el archivo subido
-const processFile = (db, filePath, attendanceDate, fileName) => {
-    return new Promise((resolve, reject) => {
-        // Insertar el archivo en attendance_files
-        const uploadDate = new Date().toISOString();
-        db.run(
-            `INSERT INTO attendance_files (file_name, upload_date, attendance_date) VALUES (?, ?, ?)`,
-            [fileName, uploadDate, attendanceDate],
-            function (err) {
-                if (err) {
-                    console.error('Error al insertar en attendance_files', err.message);
-                    return reject(err);
+const processFile = async (filePath, attendanceDate, fileName) => {
+    try {
+        // Subir archivo a Firebase Storage
+        const destination = `attendance_files/${Date.now()}_${fileName}`;
+        await bucket.upload(filePath, {
+            destination: destination,
+            metadata: {
+                metadata: {
+                    firebaseStorageDownloadTokens: admin.firestore.FieldValue.serverTimestamp()
+                }
+            }
+        });
+
+        // Obtener la URL del archivo
+        const file = bucket.file(destination);
+        const [url] = await file.getSignedUrl({
+            action: 'read',
+            expires: '03-09-2491' // Fecha de expiración muy lejana
+        });
+
+        // Crear un documento en 'attendance_files'
+        const attendanceFileRef = db.collection('attendance_files').doc();
+        await attendanceFileRef.set({
+            file_id: attendanceFileRef.id,
+            file_name: fileName,
+            upload_date: admin.firestore.Timestamp.now(),
+            attendance_date: admin.firestore.Timestamp.fromDate(new Date(attendanceDate)),
+            file_url: url
+        });
+
+        // Leer y procesar el contenido del archivo
+        const data = fs.readFileSync(filePath, 'utf8');
+        const lines = data.split('\n');
+        const userTimes = {};
+
+        lines.forEach(line => {
+            const fields = line.trim().split('\t');
+            if (fields.length >= 2) {
+                const rawIdNumber = fields[0].trim();
+                const idNumber = normalizeId(rawIdNumber);
+                const dateTime = fields[1].trim();
+
+                // Filtrar IDs inválidos
+                if (idNumber.length < 4 || !/^\d+$/.test(idNumber)) {
+                    return;
                 }
 
-                const fileId = this.lastID;
+                if (!userTimes[idNumber]) {
+                    userTimes[idNumber] = [];
+                }
+                userTimes[idNumber].push(dateTime);
+            }
+        });
 
-                // Leer y procesar el contenido del archivo
-                fs.readFile(filePath, 'utf8', (err, data) => {
-                    if (err) {
-                        console.error('Error al leer el archivo', err.message);
-                        return reject(err);
-                    }
+        // Procesar cada usuario
+        for (const id_number of Object.keys(userTimes)) {
+            let employee = null;
 
-                    const lines = data.split('\n');
-                    const userTimes = {};
+            // Intentar coincidencia exacta primero
+            const employeeSnapshot = await db.collection('employees').doc(id_number).get();
+            if (employeeSnapshot.exists) {
+                employee = employeeSnapshot.data();
+            } else {
+                // Intentar buscar empleados cuyo ID comience con id_number
+                const querySnapshot = await db.collection('employees')
+                    .where('id', '>=', id_number)
+                    .where('id', '<=', id_number + '\uf8ff')
+                    .limit(1)
+                    .get();
 
-                    lines.forEach(line => {
-                        const fields = line.trim().split('\t');
-                        if (fields.length >= 2) {
-                            const idNumber = fields[0].trim();
-                            const dateTime = fields[1].trim();
+                if (!querySnapshot.empty) {
+                    employee = querySnapshot.docs[0].data();
+                }
+            }
 
-                            // Filtrar IDs inválidos
-                            if (idNumber.length < 4 || !/^\d+$/.test(idNumber)) {
-                                return;
-                            }
+            if (employee && employee.name && employee.area) {
+                await handleUserTimes(attendanceFileRef.id, id_number, employee.name, employee.area, userTimes[id_number], attendanceDate);
+            } else {
+                console.warn(`No se encontró registro para el ID ${id_number}`);
+            }
+        }
 
-                            if (!userTimes[idNumber]) {
-                                userTimes[idNumber] = [];
-                            }
-                            userTimes[idNumber].push(dateTime);
-                        }
-                    });
+        console.log(`Archivo ${fileName} procesado y almacenado correctamente.`);
+    } catch (error) {
+        console.error('Error al procesar el archivo:', error);
+        throw error;
+    } finally {
+        // Eliminar el archivo temporal
+        fs.unlink(filePath, (err) => {
+            if (err) console.error('Error al eliminar el archivo subido', err.message);
+        });
+    }
+};
 
-                    const insertStmt = db.prepare(
-                        `INSERT INTO matched_results (file_id, id_number, name, area, check_in, check_out, status, hours_worked) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-                    );
+// Función para manejar los tiempos de cada usuario
+const handleUserTimes = async (fileId, id_number, name, area, times, attendanceDate) => {
+    try {
+        times.sort();
+        const check_in = new Date(times[0]);
+        const check_out = times.length > 1 ? new Date(times[times.length - 1]) : null;
 
-                    const processUser = (id_number) => {
-                        return new Promise((resolveUser, rejectUser) => {
-                            // Intentar coincidencia exacta primero
-                            db.get(
-                                `SELECT name, area FROM records WHERE id = ?`,
-                                [id_number],
-                                (err, row) => {
-                                    if (err) {
-                                        console.error('Error al consultar records', err.message);
-                                        return resolveUser(); // Ignorar errores de consulta y continuar
-                                    }
+        let status = "N/A";
+        let hours_worked = "N/A";
 
-                                    let name = getPropertyCaseInsensitive(row, 'name');
-                                    let area = getPropertyCaseInsensitive(row, 'area');
+        const normalizedArea = normalizeString(area);
 
-                                    if (!name) {
-                                        // Intentar con LIKE
-                                        db.get(
-                                            `SELECT name, area FROM records WHERE id LIKE ?`,
-                                            [id_number + '%'],
-                                            (err, rowLike) => {
-                                                if (err) {
-                                                    console.error('Error al consultar records con LIKE', err.message);
-                                                    return resolveUser();
-                                                }
+        // Determinar el día de la semana a partir de attendanceDate
+        const attendanceDateObj = new Date(attendanceDate);
+        const dayOfWeek = attendanceDateObj.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+        const dayType = (dayOfWeek === 6) ? 'saturday' : 'weekday'; // 'saturday' o 'weekday'
 
-                                                if (rowLike) {
-                                                    name = getPropertyCaseInsensitive(rowLike, 'name');
-                                                    area = getPropertyCaseInsensitive(rowLike, 'area');
-                                                }
+        if (expectedSchedules[normalizedArea]) {
+            const schedule = expectedSchedules[normalizedArea][dayType] || expectedSchedules[normalizedArea]['weekday'];
 
-                                                if (name && area) {
-                                                    handleUserTimes(db, insertStmt, fileId, id_number, name, area, userTimes[id_number], attendanceDate)
-                                                        .then(resolveUser)
-                                                        .catch(() => resolveUser());
-                                                } else {
-                                                    console.warn(`No se encontró registro para el ID ${id_number} incluso con LIKE`);
-                                                    resolveUser();
-                                                }
-                                            }
-                                        );
-                                    } else if (name && area) {
-                                        handleUserTimes(db, insertStmt, fileId, id_number, name, area, userTimes[id_number], attendanceDate)
-                                            .then(resolveUser)
-                                            .catch(() => resolveUser());
-                                    } else {
-                                        console.warn(`No se encontró registro para el ID ${id_number}`);
-                                        resolveUser();
-                                    }
-                                }
-                            );
-                        });
-                    };
+            if (schedule) {
+                const expectedCheckInStr = schedule.check_in;
+                const [expectedHours, expectedMinutes] = expectedCheckInStr.split(':').map(Number);
 
-                    // Función para manejar los tiempos de cada usuario
-                    const handleUserTimes = (db, insertStmt, fileId, id_number, name, area, times, attendanceDate) => {
-                        return new Promise((resolveHandle, rejectHandle) => {
-                            times.sort();
-                            const check_in = times[0];
-                            const check_out = times.length > 1 ? times[times.length - 1] : null;
+                const actualCheckInMinutes = check_in.getHours() * 60 + check_in.getMinutes();
+                const expectedCheckInMinutes = expectedHours * 60 + expectedMinutes;
 
-                            let status = "N/A";
-                            let hours_worked = "N/A";
+                status = actualCheckInMinutes <= expectedCheckInMinutes ? "TEMPRANO" : "TARDE";
 
-                            const normalizedArea = normalizeString(area);
+                if (check_out) {
+                    const diffMs = check_out - check_in;
+                    const totalHours = diffMs / (1000 * 60 * 60);
+                    const hours = Math.floor(totalHours);
+                    const minutes = Math.floor((totalHours - hours) * 60);
+                    hours_worked = `${hours}h ${minutes}m`;
+                }
+            } else {
+                status = "Horario no definido para este día";
+                hours_worked = "N/A";
+            }
+        } else {
+            status = "Área no definida";
+            hours_worked = "N/A";
+        }
 
-                            // Determinar el día de la semana a partir de attendanceDate
-                            const attendanceDateObj = new Date(attendanceDate);
-                            const dayOfWeek = attendanceDateObj.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
-                            const dayType = (dayOfWeek === 6) ? 'saturday' : 'weekday'; // 'saturday' o 'weekday'
-
-                            if (expectedSchedules[normalizedArea]) {
-                                const schedule = expectedSchedules[normalizedArea][dayType] || expectedSchedules[normalizedArea]['weekday'];
-
-                                if (schedule) {
-                                    const expectedCheckInStr = schedule.check_in;
-                                    const [expectedHours, expectedMinutes] = expectedCheckInStr.split(':').map(Number);
-
-                                    try {
-                                        const actualCheckInDate = new Date(check_in);
-                                        const actualHours = actualCheckInDate.getHours();
-                                        const actualMinutes = actualCheckInDate.getMinutes();
-
-                                        const expectedCheckInMinutes = expectedHours * 60 + expectedMinutes;
-                                        const actualCheckInMinutes = actualHours * 60 + actualMinutes;
-
-                                        status = actualCheckInMinutes <= expectedCheckInMinutes ? "TEMPRANO" : "TARDE";
-                                    } catch (e) {
-                                        status = "Formato de Hora Inválido";
-                                    }
-
-                                    if (check_out) {
-                                        try {
-                                            const actualCheckInDate = new Date(check_in);
-                                            const actualCheckOutDate = new Date(check_out);
-
-                                            const diffMs = actualCheckOutDate - actualCheckInDate;
-                                            const totalHours = diffMs / (1000 * 60 * 60);
-                                            const hours = Math.floor(totalHours);
-                                            const minutes = Math.floor((totalHours - hours) * 60);
-                                            hours_worked = `${hours}h ${minutes}m`;
-                                        } catch (e) {
-                                            hours_worked = "Formato de Hora Inválido";
-                                        }
-                                    }
-                                } else {
-                                    status = "Horario no definido para este día";
-                                    hours_worked = "N/A";
-                                }
-                            } else {
-                                status = "Área no definida";
-                                hours_worked = "N/A";
-                            }
-
-                            // Insertar el resultado emparejado
-                            insertStmt.run(
-                                [fileId, id_number, name, area, check_in, check_out, status, hours_worked],
-                                (err) => {
-                                    if (err) {
-                                        console.error('Error al insertar en matched_results', err.message);
-                                        // No rechazar para continuar con otros registros
-                                    }
-                                    resolveHandle();
-                                }
-                            );
-                        });
-                    };
-
-                    // Procesar cada usuario de forma secuencial
-                    const userIds = Object.keys(userTimes);
-                    const processAllUsers = userIds.reduce((promiseChain, id_number) => {
-                        return promiseChain.then(() => processUser(id_number));
-                    }, Promise.resolve());
-
-                    processAllUsers
-                        .then(() => {
-                            insertStmt.finalize(() => {
-                                console.log(`Archivo ${fileName} procesado y almacenado correctamente.`);
-                                resolve();
-                            });
-                        })
-                        .catch((err) => {
-                            console.error('Error al procesar usuarios', err.message);
-                            reject(err);
-                        });
-                }); // Cierre de fs.readFile
-            } // Cierre de la función callback de db.run
-        ); // Cierre de db.run
-    }); // Cierre de new Promise
-}; // Cierre de processFile
+        // Crear documento en 'matched_results'
+        await db.collection('matched_results').add({
+            file_id: fileId,
+            id_number: id_number,
+            name: name,
+            area: area,
+            check_in: admin.firestore.Timestamp.fromDate(check_in),
+            check_out: check_out ? admin.firestore.Timestamp.fromDate(check_out) : null,
+            status: status,
+            hours_worked: hours_worked
+        });
+    } catch (error) {
+        console.error(`Error al manejar tiempos para el ID ${id_number}:`, error);
+    }
+};
 
 // Subir archivo de asistencia
 router.post('/upload', upload.single('attendanceFile'), async (req, res) => {
-    const db = req.db;
     const attendanceDate = req.body.attendance_date;
     const file = req.file;
 
@@ -267,137 +232,164 @@ router.post('/upload', upload.single('attendanceFile'), async (req, res) => {
         return res.status(400).json({ error: 'No se proporcionó la fecha de asistencia' });
     }
 
-    const filePath = path.join(uploadDir, file.filename); // 'uploads/' + filename
+    const filePath = path.join(__dirname, '..', file.path); // Ruta al archivo temporal
     const fileName = file.originalname;
 
     try {
-        await processFile(db, filePath, attendanceDate, fileName);
-        // Opcional: eliminar el archivo después de procesarlo
-        fs.unlink(filePath, (err) => {
-            if (err) console.error('Error al eliminar el archivo subido', err.message);
-        });
+        await processFile(filePath, attendanceDate, fileName);
         res.json({ message: `Archivo '${fileName}' procesado y almacenado correctamente.` });
     } catch (error) {
-        console.error('Error al procesar el archivo', error.message);
+        console.error('Error al procesar el archivo:', error);
+        res.status(500).json({ error: 'Error al procesar el archivo' });
+    }
+});
+// Subir archivo de asistencia
+router.post('/upload', upload.single('attendanceFile'), async (req, res) => {
+    const attendanceDate = req.body.attendance_date;
+    const file = req.file;
+
+    if (!file) {
+        return res.status(400).json({ error: 'No se subió ningún archivo' });
+    }
+
+    if (!attendanceDate) {
+        return res.status(400).json({ error: 'No se proporcionó la fecha de asistencia' });
+    }
+
+    const filePath = path.join(__dirname, '..', file.path); // Ruta al archivo temporal
+    const fileName = file.originalname;
+
+    try {
+        await processFile(filePath, attendanceDate, fileName);
+        res.json({ message: `Archivo '${fileName}' procesado y almacenado correctamente.` });
+    } catch (error) {
+        console.error('Error al procesar el archivo:', error);
         res.status(500).json({ error: 'Error al procesar el archivo' });
     }
 });
 
 // Obtener lista de archivos de asistencia
-router.get('/attendance-files', (req, res) => {
-    const db = req.db;
-    db.all(`SELECT * FROM attendance_files ORDER BY attendance_date DESC`, [], (err, rows) => {
-        if (err) {
-            console.error('Error al obtener attendance_files', err.message);
-            res.status(500).json({ error: 'Error de base de datos' });
-        } else {
-            res.json(rows);
-        }
-    });
+router.get('/attendance-files', async (req, res) => {
+    try {
+        const snapshot = await db.collection('attendance_files').orderBy('attendance_date', 'desc').get();
+        const files = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                ...data,
+                attendance_date: data.attendance_date.toDate().toISOString().split('T')[0],
+                upload_date: data.upload_date.toDate().toISOString()
+            };
+        });
+        res.json(files);
+    } catch (error) {
+        console.error('Error al obtener attendance_files:', error);
+        res.status(500).json({ error: 'Error de base de datos' });
+    }
 });
 
 // Obtener resultados emparejados de un archivo específico
-router.get('/matched-results/:fileId', (req, res) => {
-    const db = req.db;
+router.get('/matched-results/:fileId', async (req, res) => {
     const fileId = req.params.fileId;
 
-    db.all(
-        `SELECT id_number, name, area, check_in, check_out, status, hours_worked FROM matched_results WHERE file_id = ?`,
-        [fileId],
-        (err, rows) => {
-            if (err) {
-                console.error('Error al obtener matched_results', err.message);
-                res.status(500).json({ error: 'Error de base de datos' });
-            } else {
-                res.json(rows);
-            }
-        }
-    );
+    try {
+        const snapshot = await db.collection('matched_results').where('file_id', '==', fileId).get();
+        const results = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                ...data,
+                check_in: data.check_in.toDate().toISOString(),
+                check_out: data.check_out ? data.check_out.toDate().toISOString() : null
+            };
+        });
+        res.json(results);
+    } catch (error) {
+        console.error('Error al obtener matched_results:', error);
+        res.status(500).json({ error: 'Error de base de datos' });
+    }
 });
 
 // Obtener todos los resultados emparejados
-router.get('/all-results', (req, res) => {
-    const db = req.db;
-    const query = `
-        SELECT 
-            af.file_id AS file_id,
-            af.file_name AS file_name,
-            af.attendance_date AS attendance_date,
-            mr.id_number AS id_number,
-            mr.name AS name,
-            mr.area AS area,
-            mr.check_in AS check_in,
-            mr.check_out AS check_out,
-            mr.status AS status,
-            mr.hours_worked AS hours_worked
-        FROM 
-            matched_results mr
-        JOIN 
-            attendance_files af ON mr.file_id = af.file_id
-        ORDER BY 
-            af.attendance_date DESC
-    `;
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            console.error('Error al obtener all-results', err.message);
-            res.status(500).json({ error: 'Error de base de datos' });
-        } else {
-            res.json(rows);
-        }
-    });
+router.get('/all-results', async (req, res) => {
+    try {
+        const snapshot = await db.collection('matched_results').orderBy('check_in', 'desc').get();
+        const results = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                ...data,
+                check_in: data.check_in.toDate().toISOString(),
+                check_out: data.check_out ? data.check_out.toDate().toISOString() : null
+            };
+        });
+        res.json(results);
+    } catch (error) {
+        console.error('Error al obtener all-results:', error);
+        res.status(500).json({ error: 'Error de base de datos' });
+    }
 });
 
 // Obtener lista de empleados
-router.get('/employees', (req, res) => {
-    const db = req.db;
-    db.all(`SELECT * FROM records ORDER BY name ASC`, [], (err, rows) => {
-        if (err) {
-            console.error('Error al obtener empleados', err.message);
-            res.status(500).json({ error: 'Error de base de datos' });
-        } else {
-            res.json(rows);
-        }
-    });
+router.get('/employees', async (req, res) => {
+    try {
+        const snapshot = await db.collection('employees').orderBy('name', 'asc').get();
+        const employees = snapshot.docs.map(doc => doc.data());
+        res.json(employees);
+    } catch (error) {
+        console.error('Error al obtener empleados:', error);
+        res.status(500).json({ error: 'Error de base de datos' });
+    }
 });
 
 // Agregar un nuevo empleado
-router.post('/employees', (req, res) => {
-    const db = req.db;
+router.post('/employees', async (req, res) => {
     const { id, name, area } = req.body;
 
     if (!id || !name || !area) {
         return res.status(400).json({ error: 'Faltan datos del empleado' });
     }
 
-    db.run(
-        `INSERT INTO records (id, name, area) VALUES (?, ?, ?)`,
-        [id, name, area],
-        (err) => {
-            if (err) {
-                console.error('Error al insertar empleado', err.message);
-                res.status(500).json({ error: 'Error al insertar empleado' });
-            } else {
-                res.json({ message: 'Empleado agregado correctamente' });
-            }
+    const normalizedId = normalizeId(id);
+
+    try {
+        // Verificar si el empleado ya existe
+        const employeeRef = db.collection('employees').doc(normalizedId);
+        const doc = await employeeRef.get();
+        if (doc.exists) {
+            return res.status(400).json({ error: 'Empleado con esta cédula ya existe' });
         }
-    );
+
+        // Agregar empleado
+        await employeeRef.set({
+            id: normalizedId,
+            name: name,
+            area: area
+        });
+
+        res.json({ message: 'Empleado agregado correctamente' });
+    } catch (error) {
+        console.error('Error al insertar empleado:', error);
+        res.status(500).json({ error: 'Error al insertar empleado' });
+    }
 });
 
 // Eliminar un empleado
-router.delete('/employees/:id', (req, res) => {
-    const db = req.db;
+router.delete('/employees/:id', async (req, res) => {
     const id = req.params.id;
+    const normalizedId = normalizeId(id);
 
-    db.run(`DELETE FROM records WHERE id = ?`, [id], function(err) {
-        if (err) {
-            console.error('Error al eliminar empleado', err.message);
-            res.status(500).json({ error: 'Error al eliminar empleado' });
-        } else if (this.changes === 0) {
-            res.status(404).json({ error: 'Empleado no encontrado' });
-        } else {
-            res.json({ message: 'Empleado eliminado correctamente' });
+    try {
+        const employeeRef = db.collection('employees').doc(normalizedId);
+        const doc = await employeeRef.get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ error: 'Empleado no encontrado' });
         }
-    });
+
+        await employeeRef.delete();
+        res.json({ message: 'Empleado eliminado correctamente' });
+    } catch (error) {
+        console.error('Error al eliminar empleado:', error);
+        res.status(500).json({ error: 'Error al eliminar empleado' });
+    }
 });
 
 module.exports = router;

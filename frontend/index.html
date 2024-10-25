@@ -3,22 +3,21 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <title>Aplicación de Asistencia</title>
+    <!-- Meta Tag de Viewport para Responsividad -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administrador de Asistencia</title>
+    <!-- Enlace al archivo CSS -->
     <link rel="stylesheet" href="styles.css">
-    <!-- Incluir SheetJS desde CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
     <!-- Barra de Navegación -->
     <nav>
         <div class="nav-container">
-            <h1>Asistencia</h1>
+            <h1>Control de Asistencia</h1>
             <ul class="nav-links">
                 <li><a href="#" id="nav-empleados">Empleados</a></li>
                 <li><a href="#" id="nav-asistencia">Asistencia</a></li>
             </ul>
-            <!-- Botón de Menú para pantallas pequeñas -->
             <div class="menu-toggle" id="mobile-menu">
                 <span class="bar"></span>
                 <span class="bar"></span>
@@ -32,28 +31,27 @@
         <!-- Sección de Empleados -->
         <div id="section-empleados">
             <h2>Gestión de Empleados</h2>
-            
-            <!-- Formulario para agregar empleados -->
+            <!-- Formulario para Agregar Empleado -->
             <form id="add-employee-form">
                 <label for="cedula">Cédula:</label>
                 <input type="text" id="cedula" name="cedula" required>
-                
+
                 <label for="nombre">Nombre:</label>
                 <input type="text" id="nombre" name="nombre" required>
-                
+
                 <label for="area">Área:</label>
                 <input type="text" id="area" name="area" required>
-                
+
                 <button type="submit">Agregar Empleado</button>
             </form>
             <div id="employee-message"></div>
 
             <!-- Buscar Empleados -->
             <div class="search-container">
-                <input type="text" id="search-employees-input" placeholder="Buscar empleados por cédula, nombre o área...">
+                <input type="text" id="search-employees-input" placeholder="Buscar empleados por nombre, cédula o área...">
             </div>
-            
-            <!-- Tabla de Empleados -->
+
+            <!-- Lista de Empleados -->
             <div class="table-responsive">
                 <table id="employees-table">
                     <thead>
@@ -65,7 +63,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Filas de empleados -->
+                        <!-- Aquí se insertarán los empleados -->
                     </tbody>
                 </table>
             </div>
@@ -73,33 +71,27 @@
 
         <!-- Sección de Asistencia -->
         <div id="section-asistencia" class="hidden">
-            <!-- Subir Archivo de Asistencia -->
-            <section id="upload-section">
-                <h2>Subir Archivo de Asistencia</h2>
-                <form id="upload-form">
-                    <label for="attendanceFile">Selecciona un archivo de asistencia:</label>
-                    <input type="file" id="attendanceFile" name="attendanceFile" accept=".dat, .txt" required>
-                    
-                    <label for="attendanceDate">Fecha de Asistencia:</label>
-                    <input type="date" id="attendanceDate" name="attendanceDate" required>
-                    
-                    <button type="submit">Procesar y Almacenar</button>
-                </form>
-                <div id="upload-message"></div>
-            </section>
+            <h2>Subir Archivo de Asistencia</h2>
+            <!-- Formulario para Subir Archivo -->
+            <form id="upload-form" enctype="multipart/form-data">
+                <label for="attendanceFile">Selecciona el archivo de asistencia:</label>
+                <input type="file" id="attendanceFile" name="attendanceFile" accept=".txt,.dat" required>
 
-            <hr>
+                <label for="attendanceDate">Fecha de Asistencia:</label>
+                <input type="date" id="attendanceDate" name="attendanceDate" required>
+
+                <button type="submit">Procesar y Almacenar</button>
+            </form>
+            <div id="upload-message"></div>
 
             <!-- Archivos de Asistencia Almacenados -->
-            <section id="stored-files-section">
+            <section id="attendance-files-section">
                 <h2>Archivos de Asistencia Almacenados</h2>
-                
                 <!-- Buscar Archivos -->
                 <div class="search-container">
-                    <input type="text" id="search-files-input" placeholder="Buscar archivos por nombre o ID...">
+                    <input type="text" id="search-files-input" placeholder="Buscar archivos por ID o nombre...">
                 </div>
-                
-                <!-- Tabla de Archivos de Asistencia -->
+                <!-- Lista de Archivos -->
                 <div class="table-responsive">
                     <table id="attendance-files-table">
                         <thead>
@@ -112,23 +104,24 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Filas de archivos de asistencia -->
+                            <!-- Aquí se insertarán los archivos de asistencia -->
                         </tbody>
                     </table>
                 </div>
             </section>
 
-            <hr>
-
             <!-- Resultados Emparejados -->
             <section id="matched-results-section">
                 <h2>Resultados Emparejados</h2>
-                
+
                 <!-- Buscar Resultados -->
                 <div class="search-container">
                     <input type="text" id="search-results-input" placeholder="Buscar resultados por nombre, ID o área...">
                 </div>
-                
+
+                <!-- Indicador de carga -->
+                <div id="loading-indicator" class="loading-indicator hidden"></div>
+
                 <!-- Contenedor de Resultados Emparejados -->
                 <div id="matched-results-container">
                     <!-- Resultados emparejados -->
@@ -137,7 +130,7 @@
             </section>
         </div>
     </div>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
