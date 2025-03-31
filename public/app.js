@@ -123,13 +123,14 @@ function processDATFile(file) {
 
   
 // Función para procesar los datos de asistencia del archivo .dat
+// Función para procesar los datos de asistencia del archivo .dat
 function processAttendanceData(lines) {
   const tableBody = document.querySelector('#attendanceTable tbody');
   tableBody.innerHTML = ''; // Limpiar la tabla antes de llenarla
 
   let users = {};
 
-  // Organizar los datos por cédula
+  // Organizar los datos por cédula y fecha
   lines.forEach(line => {
     const fields = line.split('\t'); // Dividir por tabuladores
     
@@ -140,61 +141,75 @@ function processAttendanceData(lines) {
       const checkIn = timestamp;  // Suponemos que el archivo tiene solo un timestamp por registro
       const checkOut = checkIn; // Para este ejemplo, usaremos el mismo check-out que el check-in
 
+      // Extraemos solo la fecha (sin hora) de la marca de tiempo
+      const date = checkIn.split(' ')[0];
+
       const result = matchIdWithArea(id); // Obtener el área, la cédula completa y el nombre
 
       if (result) {
         const { area, fullId, name } = result;
         
-        // Almacenar el usuario con la cédula completa de 10 dígitos
+        // Agrupar por cédula y fecha
         if (!users[fullId]) {
-          users[fullId] = { checkIn, checkOut, area, name };  // También guardamos el nombre
-        } else {
-          users[fullId].checkOut = checkOut; // Usamos el último check-out
+          users[fullId] = {};
         }
+
+        if (!users[fullId][date]) {
+          users[fullId][date] = { checkIn, checkOut, area, name, timestamps: [] };
+        }
+
+        users[fullId][date].timestamps.push(checkIn); // Almacenar el timestamp para el día
       }
     }
   });
 
-  // Llenar la tabla con los datos procesados
+  // Procesar los registros agrupados por cédula y fecha
   Object.keys(users).forEach(fullId => {
     const user = users[fullId];
-    const { checkIn, checkOut, area, name } = user;
-    const schedule = expected_schedules[area];
+    
+    Object.keys(user).forEach(date => {
+      const dayRecords = user[date];
+      const { area, name, timestamps } = dayRecords;
 
-    // Extraer solo la hora y minutos de checkIn
-    const checkInTime = checkIn.slice(11, 16); // '07:35' por ejemplo
-    const expectedCheckInTime = schedule.check_in; // '07:45' por ejemplo
+      // Tomar el primer y último timestamp del día
+      const firstTimestamp = timestamps[0];
+      const lastTimestamp = timestamps[timestamps.length - 1];
 
-    // Comparar la hora de entrada con el horario máximo permitido
-    let arrivalStatus = '';
-    if (checkInTime <= expectedCheckInTime) {
-      arrivalStatus = 'Temprano';  // Llegó antes o a tiempo
-    } else {
-      arrivalStatus = 'Tarde';  // Llegó después del horario máximo permitido
-    }
+      // Comparar la hora de entrada con el horario máximo permitido
+      const schedule = expected_schedules[area];
+      const checkInTime = firstTimestamp.slice(11, 16); // '07:35' por ejemplo
+      const expectedCheckInTime = schedule.check_in; // '07:45' por ejemplo
 
-    // Calcular las horas trabajadas (checkOut y checkIn)
-    const checkInDate = new Date(`1970-01-01T${checkIn.slice(11, 16)}:00Z`);
-    const checkOutDate = new Date(`1970-01-01T${checkOut.slice(11, 16)}:00Z`);
-    let workedMinutes = (checkOutDate - checkInDate) / (1000 * 60); // Diferencia en minutos
-    let workedHours = workedMinutes / 60;  // Convertir minutos a horas
+      let arrivalStatus = '';
+      if (checkInTime <= expectedCheckInTime) {
+        arrivalStatus = 'Temprano';  // Llegó antes o a tiempo
+      } else {
+        arrivalStatus = 'Tarde';  // Llegó después del horario máximo permitido
+      }
 
-    // Asegurarse de que no haya NaN en el cálculo de horas trabajadas
-    if (isNaN(workedHours)) {
-      workedHours = 0;  // Si NaN, asignar 0 horas
-    }
+      // Calcular las horas trabajadas (checkOut y checkIn)
+      const checkInDate = new Date(`1970-01-01T${firstTimestamp.slice(11, 16)}:00Z`);
+      const checkOutDate = new Date(`1970-01-01T${lastTimestamp.slice(11, 16)}:00Z`);
+      let workedMinutes = (checkOutDate - checkInDate) / (1000 * 60); // Diferencia en minutos
+      let workedHours = workedMinutes / 60;  // Convertir minutos a horas
 
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${fullId}</td>  <!-- Mostrar la cédula de 10 dígitos -->
-      <td>${name}</td> <!-- Mostrar el nombre -->
-      <td>${area}</td>
-      <td>${checkIn}</td>
-      <td>${checkOut}</td>
-      <td>${arrivalStatus}</td> <!-- Mostrar el estado (Temprano/Tarde) -->
-      <td>${workedHours.toFixed(2)} horas</td> <!-- Mostrar las horas trabajadas -->
-    `;
-    tableBody.appendChild(row);
+      // Asegurarse de que no haya NaN en el cálculo de horas trabajadas
+      if (isNaN(workedHours)) {
+        workedHours = 0;  // Si NaN, asignar 0 horas
+      }
+
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${fullId}</td>  <!-- Mostrar la cédula de 10 dígitos -->
+        <td>${name}</td> <!-- Mostrar el nombre -->
+        <td>${area}</td>
+        <td>${firstTimestamp}</td> <!-- Mostrar el check-in -->
+        <td>${lastTimestamp}</td> <!-- Mostrar el check-out -->
+        <td>${arrivalStatus}</td> <!-- Mostrar el estado (Temprano/Tarde) -->
+        <td>${workedHours.toFixed(2)} horas</td> <!-- Mostrar las horas trabajadas -->
+      `;
+      tableBody.appendChild(row);
+    });
   });
 
   // Cambiar el mensaje de estado
