@@ -1,129 +1,89 @@
+// Horarios esperados para cada área
 const expected_schedules = {
-    "ASEO": { "check_in": "06:15", "check_out": "15:00" },
-    "MANTENIMIENTO": { "check_in": "07:15", "check_out": "17:00" },
-    "ADMINISTRACIÓN": { "check_in": "07:45", "check_out": "17:00" },
-    "POSCOSECHA": { "check_in": "06:40", "check_out": "15:30" }
+  "ASEO": { "check_in": "06:15", "check_out": "15:00" },
+  "MANTENIMIENTO": { "check_in": "07:15", "check_out": "17:00" },
+  "ADMINISTRACIÓN": { "check_in": "07:45", "check_out": "17:00" },
+  "POSCOSECHA": { "check_in": "06:40", "check_out": "15:30" }
 };
-  
-  
-const records_data = [
-    ['1088327667', 'ERIKA TATIANA GALLEGO VINASCO', 'POSCOSECHA'],
-    ['1004520909', 'ANGIE VANESSA ARCE LOPEZ', 'POSCOSECHA'],
-    ['94509907', 'JUAN ESTEBAN TORO VARGAS', 'ADMINISTRACIÓN'],
-    ['1088327667', 'ERIKA TATIANA GALLEGO VINASCO', 'POSCOSECHA'],
-    ['1004520909','ANGIE VANESSA ARCE LOPEZ','POSCOSECHA'],
-    ['94509907','JULIÁN ANDRÉS PÉREZ BETANCUR','ADMINISTRACIÓN'],
-    ['22131943','ROSA AMELIA SOLORZANO SAMPEDRO','ASEO'],
-    ['1089747022','JUAN ESTEBAN TORO VARGAS','MANTENIMIENTO'],
-    ['1004733786','STEVEN ARCE VALLE','POSCOSECHA'],
-    ['1004756825','LAURA RAMIREZ QUINTERO','ADMINISTRACIÓN'],
-    ['1088305975','PAOLA ANDREA OSORIO GRISALES','POSCOSECHA'],
-    ['1004751727',"LAURA VANESSA LONDOÑO SILVA","POSCOSECHA"],
-    ['1088256932',"YEISON LEANDRO ARIAS MONTES","OPERACIONES"],
-    ['1088346284',"NATALIA VALENCIA CORTES","ADMINISTRACIÓN"],
-    ['1117964380',"YAMILETH HILARION OLAYA","POSCOSECHA"],
-    ['5760588',"JOSE AUGUSTO CORDOVEZ CHARAMA","POSCOSECHA"],
-    ['1112770658',"LUIS ALBERTO OROZCO RODRIGUEZ","POSCOSECHA"],
-    ['1110480331',"CLAUDIA YULIMA CUTIVA BETANCOURTH","POSCOSECHA"],
-    ['25038229',"YORME DE JESUS LOPEZ IBARRA","POSCOSECHA"],
-    ['1128844585',"YENIFFER MOSQUERA PEREA","POSCOSECHA"],
-    ['1089930892',"ALEXANDRA RIOS BUENO","POSCOSECHA"],
-    ['1088295574',"ANDRES FELIPE BEDOYA ROJAS","POSCOSECHA"],
-    ['1088316215',"SERGIO MUÑOZ RAMIREZ","ADMINISTRACIÓN"],
-    ['1128844863',"BIVIAN YISET MOSQUERA PEREA","POSCOSECHA"],
-    ['30356482',"MAGOLA PATIÑO ECHEVERRY","POSCOSECHA"],
-    ['1085816021',"LEIDY CAROLINA JIMENEZ BERMUDEZ","POSCOSECHA"],
-    ['1089599713',"MARIA CAMILA COLORADO LONDOÑO","POSCOSECHA"],
-    ['1007367459',"FLOR NORELA VARGAS SERNA","POSCOSECHA"],
-    ['1004668536',"LAURA CAMILA ARIAS HERNANDEZ","ADMINISTRACIÓN"],
-    ['1054926615',"MARIA PAULA AGUIRRE OCHOA","ADMINISTRACIÓN"],
-    ['1060270203',"MARCELA LOPEZ RAMIREZ","POSCOSECHA"],
-    ['1274327',"WYNDIMAR YALUZ SANCHEZ HERRERA","POSCOSECHA"],
-    ['1118287112',"MARTHA LUCIA LOPEZ ARBOLEDA","POSCOSECHA"],
-    ['5472144',"NERYS CAROLINA HERNANDEZ GARCIA","POSCOSECHA"],
-    ['63530730',"NORIZA NIÑO PEDRAZA","POSCOSECHA"],
-    ['1004755939',"FABIO ANDRES GOMEZ OSPINA","ADMINISTRACIÓN"],
-    ['1089601326',"LEIDY LAURA ESPINOZA OSPINA","POSCOSECHA"],
-    ['1007554110',"ANGIE PAOLA OCAMPO HENAO","POSCOSECHA"],
-    ['1032936469',"DANA CAROLINA SUAREZ GALEANO","POSCOSECHA"],
-    ['42146393',"ANGELA MARIA ALARCON ESCOBAR","POSCOSECHA"],
-    ['42146393', 'ANGELA MARIA ALARCON ESCOBAR', 'POSCOSECHA'],
-    ['1007745486', 'ALEXANDRA CUELLAR ARTUNDUAGA', 'POSCOSECHA'],
-    ['6060045', 'OSCARIANI DEL CARMEN AMARISTA GUZMAN', 'POSCOSECHA'],
-    ['1088352316', 'ANGIE KATHERINE VALENCIA HEREDIA', 'POSCOSECHA'],
-    ['1088282768', 'ELIANA VALENCIA GARCIA', 'ADMINISTRACIÓN'],
-    ['1143384637', 'KELLY JOHANA DELGADO CASTILLO', 'ADMINISTRACIÓN'],
-    ['1089930256', 'PAULINA GUERRERO CARVAJAL', 'ADMINISTRACIÓN'],
-    ['1060010197', 'JUAN PABLO OSPINA VILLADA', 'POSCOSECHA'],
-    ['1088034548', 'YURI LORENA GIRALDO BERRIO', 'POSCOSECHA'],
-    ['1193263534','KAREN DAHIANA BERMUDEZ','POSCOSECHA'],
-    ['1088325129','ROSA MARIA LOZANO TORRES','POSCOSECHA'],
-    ['1004683651','SEBASTIAN OROZCO ECHEVERRY','POSCOSECHA'],
-    ['6620175', 'JESUS DANIEL AMATIMA ASOCAR', 'POSCOSECHA'],
-    ['1088029552', 'JAMES MORALES AGUADO', 'MANTENIMIENTO'],
-    ['1004686441', 'ANA YASMIN VELEZ GARCIA', 'POSCOSECHA'],
-    ['1087560062', 'KELLY JOHANA LOPEZ GONZALEZ', 'POSCOSECHA'],
-    ['1005021274', 'MANUELA HOLGUIN ARANGO', 'POSCOSECHA'],
-    ['1088353499', 'MARIA ESMERALDA PAVAS BATERO', 'POSCOSECHA'],
-    ['1059698941', 'JENIFER BAÑOL PESCADORS', 'POSCOSECHA'],
-    ['1024592442','DAVID ANDRES BLANCO GALEANO','POSCOSECHA'],
-    ['1088824868','LAURA VALENTINA MOTATO BETANCOUR','POSCOSECHA'],
-    ['6272421','GENESIS DE NAZARETH LOYO PASTRANA','POSCOSECHA'],
-    ['3215025','HENYERLY YISMERY MONTOYA LOYO','POSCOSECHA'],
-    ['1056781915','CLAUDIA MIRLAYS RONDON OCAMPO','POSCOSECHA'],
-    ['1056786801','KARINA VANESA RUBIO CAICEDO','POSCOSECHA']
-];
-  
-// Función para comparar las cédulas recortando el último dígito si tiene 9 dígitos en el archivo .dat
+
+// Variable global para almacenar los usuarios obtenidos de Firebase
+let usuariosFirebase = [];
+
+// Función para obtener los usuarios desde el endpoint de Firebase
+async function fetchUsuarios() {
+  try {
+    const response = await fetch('/api/usuarios');
+    if (!response.ok) {
+      throw new Error('Error al obtener usuarios');
+    }
+    usuariosFirebase = await response.json();
+    console.log('Usuarios actualizados:', usuariosFirebase);
+  } catch (error) {
+    console.error('Error fetching usuarios:', error);
+  }
+}
+
+// Llamamos a fetchUsuarios al cargar el DOM para tener la lista actualizada
+document.addEventListener('DOMContentLoaded', fetchUsuarios);
+
+// -------------------------------------------------------------------
+// Función para comparar las cédulas utilizando los datos de Firebase
 function matchIdWithArea(id_number) {
-    id_number = id_number.trim();
-  
-    // Si la cédula en .dat tiene 9 dígitos, buscamos la cédula de 10 dígitos en records_data
-    if (id_number.length === 9) {
-      for (let record of records_data) {
-        if (record[0].slice(0, -1) === id_number) { // Comparar los primeros 9 dígitos
-          return { 
-            area: record[2], 
-            fullId: record[0], 
-            name: record[1] // Agregar el nombre
-          };  
-        }
+  id_number = id_number.trim();
+  // Si el id en el .dat tiene 9 dígitos, buscamos el usuario cuyo campo 'cedula'
+  // (almacenado con 10 dígitos en Firebase) coincida en sus primeros 9 dígitos.
+  if (id_number.length === 9) {
+    for (let user of usuariosFirebase) {
+      if (user.cedula.slice(0, -1) === id_number) {
+        return { 
+          area: user.area, 
+          fullId: user.cedula, 
+          name: user.nombre 
+        };
       }
     }
-  
-    // Si no se encuentra, retornar null
-    return null;
-}
-
-
-  
-// Función para manejar la carga del archivo
-document.getElementById('inputFile').addEventListener('change', handleFileUpload);
-  
-function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (file) {
-      // Mostrar el mensaje de "Cargando..."
-      document.getElementById('statusMessage').innerText = 'Cargando archivo...';
-      document.getElementById('statusMessage').style.display = 'block';
-      processDATFile(file);
+  }
+  // Opcional: si el id ya tiene 10 dígitos, se puede comparar directamente
+  if (id_number.length === 10) {
+    for (let user of usuariosFirebase) {
+      if (user.cedula === id_number) {
+        return { 
+          area: user.area, 
+          fullId: user.cedula, 
+          name: user.nombre 
+        };
+      }
     }
-}
-  
-// Función para procesar el archivo .dat
-function processDATFile(file) {
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        const fileContent = e.target.result;
-        const lines = fileContent.split('\n'); // Dividir el contenido en líneas
-        processAttendanceData(lines);
-    };
-    reader.readAsText(file); // Leer el archivo como texto
+  }
+  return null;
 }
 
-  
-// Función para procesar los datos de asistencia del archivo .dat
-// Función para procesar los datos de asistencia del archivo .dat
+// -------------------------------------------------------------------
+// Procesamiento del archivo de asistencia (.dat)
+
+// Manejo de la carga del archivo
+document.getElementById('inputFile')?.addEventListener('change', handleFileUpload);
+
+function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (file) {
+    // Mostrar el mensaje de "Cargando..."
+    document.getElementById('statusMessage').innerText = 'Cargando archivo...';
+    document.getElementById('statusMessage').style.display = 'block';
+    processDATFile(file);
+  }
+}
+
+function processDATFile(file) {
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const fileContent = e.target.result;
+    const lines = fileContent.split('\n'); // Dividir el contenido en líneas
+    processAttendanceData(lines);
+  };
+  reader.readAsText(file); // Leer el archivo como texto
+}
+
 function processAttendanceData(lines) {
   const tableBody = document.querySelector('#attendanceTable tbody');
   tableBody.innerHTML = ''; // Limpiar la tabla antes de llenarla
@@ -139,13 +99,13 @@ function processAttendanceData(lines) {
       const timestamp = fields[1].trim();
 
       const checkIn = timestamp;  // Suponemos que el archivo tiene solo un timestamp por registro
-      const checkOut = checkIn; // Para este ejemplo, usaremos el mismo check-out que el check-in
+      const checkOut = checkIn; // Para este ejemplo, se usará el mismo valor para check-out
 
-      // Extraemos solo la fecha (sin hora) de la marca de tiempo
+      // Extraer la fecha (sin la hora) de la marca de tiempo
       const date = checkIn.split(' ')[0];
 
-      const result = matchIdWithArea(id); // Obtener el área, la cédula completa y el nombre
-
+      // Buscar la información del usuario en Firebase
+      const result = matchIdWithArea(id);
       if (result) {
         const { area, fullId, name } = result;
         
@@ -153,74 +113,158 @@ function processAttendanceData(lines) {
         if (!users[fullId]) {
           users[fullId] = {};
         }
-
         if (!users[fullId][date]) {
           users[fullId][date] = { checkIn, checkOut, area, name, timestamps: [] };
         }
-
         users[fullId][date].timestamps.push(checkIn); // Almacenar el timestamp para el día
       }
     }
   });
 
-  // Procesar los registros agrupados por cédula y fecha
+  // Procesar cada grupo (por usuario y fecha) para calcular asistencia y horas trabajadas
   Object.keys(users).forEach(fullId => {
     const user = users[fullId];
-    
     Object.keys(user).forEach(date => {
       const dayRecords = user[date];
       const { area, name, timestamps } = dayRecords;
 
-      // Tomar el primer y último timestamp del día
+      // Se toma el primer y último timestamp del día
       const firstTimestamp = timestamps[0];
       const lastTimestamp = timestamps[timestamps.length - 1];
 
-      // Comparar la hora de entrada con el horario máximo permitido
+      // Comparar la hora de entrada con el horario máximo permitido para el área
       const schedule = expected_schedules[area];
-      const checkInTime = firstTimestamp.slice(11, 16); // '07:35' por ejemplo
-      const expectedCheckInTime = schedule.check_in; // '07:45' por ejemplo
+      const checkInTime = firstTimestamp.slice(11, 16); // Ejemplo: '07:35'
+      const expectedCheckInTime = schedule.check_in; // Ejemplo: '07:45'
 
-      let arrivalStatus = '';
-      if (checkInTime <= expectedCheckInTime) {
-        arrivalStatus = 'Temprano';  // Llegó antes o a tiempo
-      } else {
-        arrivalStatus = 'Tarde';  // Llegó después del horario máximo permitido
-      }
+      let arrivalStatus = (checkInTime <= expectedCheckInTime) ? 'Temprano' : 'Tarde';
 
-      // Calcular las horas trabajadas (checkOut y checkIn)
+      // Calcular las horas trabajadas (suponiendo checkIn y checkOut)
       const checkInDate = new Date(`1970-01-01T${firstTimestamp.slice(11, 16)}:00Z`);
       const checkOutDate = new Date(`1970-01-01T${lastTimestamp.slice(11, 16)}:00Z`);
-      let workedMinutes = (checkOutDate - checkInDate) / (1000 * 60); // Diferencia en minutos
-      let workedHours = workedMinutes / 60;  // Convertir minutos a horas
-
-      // Asegurarse de que no haya NaN en el cálculo de horas trabajadas
+      let workedMinutes = (checkOutDate - checkInDate) / (1000 * 60);
+      let workedHours = workedMinutes / 60;
       if (isNaN(workedHours)) {
-        workedHours = 0;  // Si NaN, asignar 0 horas
+        workedHours = 0;
       }
 
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td>${fullId}</td>  <!-- Mostrar la cédula de 10 dígitos -->
-        <td>${name}</td> <!-- Mostrar el nombre -->
+        <td>${fullId}</td>
+        <td>${name}</td>
         <td>${area}</td>
-        <td>${firstTimestamp}</td> <!-- Mostrar el check-in -->
-        <td>${lastTimestamp}</td> <!-- Mostrar el check-out -->
-        <td>${arrivalStatus}</td> <!-- Mostrar el estado (Temprano/Tarde) -->
-        <td>${workedHours.toFixed(2)} horas</td> <!-- Mostrar las horas trabajadas -->
+        <td>${firstTimestamp}</td>
+        <td>${lastTimestamp}</td>
+        <td>${arrivalStatus}</td>
+        <td>${workedHours.toFixed(2)} horas</td>
       `;
       tableBody.appendChild(row);
     });
   });
 
-  // Cambiar el mensaje de estado
+  // Actualizar el mensaje de estado
   document.getElementById('statusMessage').innerText = 'Subido exitosamente';
   setTimeout(() => {
     document.getElementById('statusMessage').style.display = 'none';
-  }, 3000);  // Ocultar el mensaje después de 3 segundos
+  }, 3000);
+}
+
+// -------------------------------------------------------------------
+// Gestión de la sección de Usuarios
+
+// Manejo del formulario para agregar un nuevo usuario
+const addUserForm = document.getElementById('addUserForm');
+if (addUserForm) {
+  addUserForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const cedula = document.getElementById('cedula').value.trim();
+    const nombre = document.getElementById('nombre').value.trim();
+    const area = document.getElementById('area').value;
+
+    if (cedula && nombre && area) {
+      try {
+        const response = await fetch('/api/usuarios', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cedula, nombre, area })
+        });
+        if (!response.ok) {
+          throw new Error('Error al agregar usuario');
+        }
+        alert('Usuario agregado exitosamente');
+        addUserForm.reset();
+        // Actualizamos la tabla de usuarios y la lista global
+        loadUsuarios();
+        await fetchUsuarios();
+      } catch (error) {
+        console.error(error);
+        alert('Error al agregar usuario');
+      }
+    }
+  });
+}
+
+// Función para cargar y mostrar los usuarios en la sección "Usuarios"
+// Función para cargar y mostrar los usuarios en la sección "Usuarios"
+async function loadUsuarios() {
+  try {
+    const response = await fetch('/api/usuarios');
+    if (!response.ok) {
+      throw new Error('Error al cargar usuarios');
+    }
+    const usuarios = await response.json();
+    const usuariosTableBody = document.querySelector('#usuariosTable tbody');
+    if (usuariosTableBody) {
+      usuariosTableBody.innerHTML = '';
+      usuarios.forEach(usuario => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${usuario.cedula}</td>
+          <td>${usuario.nombre}</td>
+          <td>${usuario.area}</td>
+          <td>
+            <button class="delete-btn" data-id="${usuario.id}">Eliminar</button>
+          </td>
+        `;
+        usuariosTableBody.appendChild(row);
+      });
+
+      // Agregar evento de eliminación a los botones
+      const deleteButtons = document.querySelectorAll('.delete-btn');
+      deleteButtons.forEach(button => {
+        button.addEventListener('click', async (e) => {
+          const userId = e.target.getAttribute('data-id');
+          try {
+            const response = await fetch(`/api/usuarios/${userId}`, { method: 'DELETE' });
+            if (!response.ok) {
+              throw new Error('Error al eliminar usuario');
+            }
+            alert('Usuario eliminado exitosamente');
+            loadUsuarios(); // Recargar la lista de usuarios
+          } catch (error) {
+            console.error('Error al eliminar usuario:', error);
+            alert('Error al eliminar usuario');
+          }
+        });
+      });
+    }
+  } catch (error) {
+    console.error('Error al cargar usuarios:', error);
+  }
 }
 
 
+// -------------------------------------------------------------------
+// Lógica para el cambio de sección (navbar)
+// Se asume que en el HTML existen enlaces con id "linkReporte" y "linkUsuarios"
+// y secciones con id "reporteSection" y "usuariosSection"
+document.getElementById('linkReporte')?.addEventListener('click', () => {
+  document.getElementById('reporteSection').style.display = 'block';
+  document.getElementById('usuariosSection').style.display = 'none';
+});
 
-
-
-
+document.getElementById('linkUsuarios')?.addEventListener('click', () => {
+  document.getElementById('reporteSection').style.display = 'none';
+  document.getElementById('usuariosSection').style.display = 'block';
+  loadUsuarios(); // Cargar la lista actualizada de usuarios
+});
