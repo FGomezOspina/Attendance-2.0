@@ -89,6 +89,7 @@ function processAttendanceData(lines) {
   tableBody.innerHTML = ''; // Limpiar la tabla antes de llenarla
 
   let users = {};
+  let hasData = false; // Variable para verificar si hay datos
 
   // Organizar los datos por cédula y fecha
   lines.forEach(line => {
@@ -117,6 +118,7 @@ function processAttendanceData(lines) {
           users[fullId][date] = { checkIn, checkOut, area, name, timestamps: [] };
         }
         users[fullId][date].timestamps.push(checkIn); // Almacenar el timestamp para el día
+        hasData = true; // Hay datos en la tabla
       }
     }
   });
@@ -162,12 +164,25 @@ function processAttendanceData(lines) {
     });
   });
 
+  // Mostrar u ocultar el mensaje "No hay datos"
+  document.getElementById('noDataMessage').style.display = hasData ? 'none' : 'block';
+
+  // Mostrar los controles de búsqueda y descarga solo si hay datos
+  if (hasData) {
+    document.getElementById('searchReportContainer').style.display = 'block';
+    document.getElementById('downloadExcelContainer').style.display = 'block';
+  } else {
+    document.getElementById('searchReportContainer').style.display = 'none';
+    document.getElementById('downloadExcelContainer').style.display = 'none';
+  }
+
   // Actualizar el mensaje de estado
   document.getElementById('statusMessage').innerText = 'Subido exitosamente';
   setTimeout(() => {
     document.getElementById('statusMessage').style.display = 'none';
   }, 3000);
 }
+
 
 // -------------------------------------------------------------------
 // Gestión de la sección de Usuarios
@@ -303,4 +318,23 @@ document.getElementById('searchUsers')?.addEventListener('input', function() {
       row.style.display = 'none';
     }
   });
+});
+
+// Función para descargar el reporte de asistencia como archivo Excel
+document.getElementById('downloadExcel')?.addEventListener('click', function () {
+  const table = document.getElementById('attendanceTable');
+  const workbook = XLSX.utils.table_to_book(table, { sheet: "Reporte de Asistencia" });
+  const excelFile = XLSX.write(workbook, { bookType: 'xlsx', type: 'binary' });
+  const buffer = new ArrayBuffer(excelFile.length);
+  const view = new Uint8Array(buffer);
+
+  for (let i = 0; i < excelFile.length; i++) {
+    view[i] = excelFile.charCodeAt(i) & 0xff;
+  }
+
+  const blob = new Blob([buffer], { type: 'application/octet-stream' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'reporte_asistencia.xlsx';
+  link.click();
 });

@@ -102,3 +102,21 @@ input[type="search"]:focus {
   border-color: #5c6bc0;
   box-shadow: 0 0 0 0.2rem rgba(98, 150, 254, 0.25);
 }
+
+/* Estilo personalizado para el botón de descarga */
+#downloadExcel {
+  padding: 10px 20px;
+  font-size: 1rem;
+  background-color: #4caf50;
+  color: #fff;
+  border-radius: 5px;
+  border: none;
+}
+
+#downloadExcel:hover {
+  background-color: #45a049;
+}
+
+#downloadExcel i {
+  margin-right: 5px;
+}
