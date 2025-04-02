@@ -268,3 +268,39 @@ document.getElementById('linkUsuarios')?.addEventListener('click', () => {
   document.getElementById('usuariosSection').style.display = 'block';
   loadUsuarios(); // Cargar la lista actualizada de usuarios
 });
+
+// Función para filtrar los usuarios en la tabla de Reporte de Asistencia
+document.getElementById('searchReport')?.addEventListener('input', function() {
+  const filter = this.value.toLowerCase();
+  const rows = document.querySelectorAll('#attendanceTable tbody tr');
+  
+  rows.forEach(row => {
+    const cells = row.querySelectorAll('td');
+    const name = cells[1]?.textContent.toLowerCase();
+    const cedula = cells[0]?.textContent.toLowerCase();
+
+    if (name.includes(filter) || cedula.includes(filter)) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+});
+
+// Función para filtrar los usuarios en la tabla de Gestión de Usuarios
+document.getElementById('searchUsers')?.addEventListener('input', function() {
+  const filter = this.value.toLowerCase();
+  const rows = document.querySelectorAll('#usuariosTable tbody tr');
+  
+  rows.forEach(row => {
+    const cells = row.querySelectorAll('td');
+    const name = cells[1]?.textContent.toLowerCase();
+    const cedula = cells[0]?.textContent.toLowerCase();
+
+    if (name.includes(filter) || cedula.includes(filter)) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+});

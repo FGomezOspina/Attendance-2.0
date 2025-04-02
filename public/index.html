@@ -44,6 +44,10 @@
       <div class="alert alert-info text-center" id="statusMessage" style="display: none;">
         Cargando archivo...
       </div>
+      <!-- Barra de búsqueda para la tabla de Reporte de Asistencia -->
+      <div class="mb-4">
+        <input type="search" id="searchReport" placeholder="Buscar por nombre o cédula" class="form-control" />
+      </div>
       <div class="table-responsive mt-4">
         <table id="attendanceTable" class="table table-striped table-hover">
           <thead>
@@ -88,6 +92,11 @@
         </div>
         <button type="submit" class="btn btn-primary">Agregar Usuario</button>
       </form>
+
+      <!-- Barra de búsqueda para la tabla de Usuarios -->
+      <div class="mb-4">
+        <input type="search" id="searchUsers" placeholder="Buscar por nombre o cédula" class="form-control" />
+      </div>
       
       <!-- Tabla para mostrar los usuarios existentes -->
       <div class="table-responsive">
